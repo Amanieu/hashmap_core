@@ -11,16 +11,22 @@
 //! Unordered containers, implemented as hash-tables
 
 #![no_std]
-#![feature(alloc, dropck_eyepatch, generic_param_attrs, allocator_api, shared, unique,
-           sip_hash_13, fused, placement_new_protocol)]
+#![cfg_attr(not(feature = "disable"), feature(alloc, dropck_eyepatch, generic_param_attrs, allocator_api, shared, unique,sip_hash_13, fused, placement_new_protocol))]
 
+#[cfg(not(feature = "disable"))]
 extern crate alloc;
 
+#[cfg(not(feature = "disable"))]
 mod table;
+#[cfg(not(feature = "disable"))]
 pub mod map;
+#[cfg(not(feature = "disable"))]
 pub mod set;
+#[cfg(not(feature = "disable"))]
 pub mod fnv;
+#[cfg(not(feature = "disable"))]
 
+#[cfg(not(feature = "disable"))]
 trait Recover<Q: ?Sized> {
     type Key;
 
@@ -29,7 +35,11 @@ trait Recover<Q: ?Sized> {
     fn replace(&mut self, key: Self::Key) -> Option<Self::Key>;
 }
 
+#[cfg(not(feature = "disable"))]
 pub use map::HashMap;
+#[cfg(not(feature = "disable"))]
 pub use set::HashSet;
+#[cfg(not(feature = "disable"))]
 pub use fnv::FnvHashMap;
+#[cfg(not(feature = "disable"))]
 pub use fnv::FnvHashSet;
