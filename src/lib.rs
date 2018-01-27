@@ -11,7 +11,7 @@
 //! Unordered containers, implemented as hash-tables
 
 #![no_std]
-#![cfg_attr(not(feature = "disable"), feature(alloc, dropck_eyepatch, generic_param_attrs, allocator_api, shared, unique,sip_hash_13, fused, placement_new_protocol))]
+#![cfg_attr(not(feature = "disable"), feature(alloc, dropck_eyepatch, generic_param_attrs, allocator_api, fused, placement_new_protocol, ptr_internals))]
 
 #[cfg(not(feature = "disable"))]
 extern crate alloc;

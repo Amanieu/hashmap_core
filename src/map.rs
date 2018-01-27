@@ -1245,6 +1245,45 @@ where
             .map(|bucket| pop_internal(bucket).1)
     }
 
+    /// Removes a key from the map, returning the stored key and value if the
+    /// key was previously in the map.
+    ///
+    /// The key may be any borrowed form of the map's key type, but
+    /// [`Hash`] and [`Eq`] on the borrowed form *must* match those for
+    /// the key type.
+    ///
+    /// [`Eq`]: ../../std/cmp/trait.Eq.html
+    /// [`Hash`]: ../../std/hash/trait.Hash.html
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(hash_map_remove_entry)]
+    /// use std::collections::HashMap;
+    ///
+    /// # fn main() {
+    /// let mut map = HashMap::new();
+    /// map.insert(1, "a");
+    /// assert_eq!(map.remove_entry(&1), Some((1, "a")));
+    /// assert_eq!(map.remove(&1), None);
+    /// # }
+    /// ```
+    pub fn remove_entry<Q: ?Sized>(&mut self, k: &Q) -> Option<(K, V)>
+        where K: Borrow<Q>,
+              Q: Hash + Eq
+    {
+        if self.table.size() == 0 {
+            return None;
+        }
+
+        self.search_mut(k)
+            .into_occupied_bucket()
+            .map(|bucket| {
+                let (k, v, _) = pop_internal(bucket);
+                (k, v)
+            })
+    }
+
     /// Retains only the elements specified by the predicate.
     ///
     /// In other words, remove all pairs `(k, v)` such that `f(&k,&mut v)` returns `false`.
@@ -1854,7 +1893,7 @@ impl<'a, K, V> Placer<V> for Entry<'a, K, V> {
     }
 }
 
-impl<'a, K, V> Place<V> for EntryPlace<'a, K, V> {
+unsafe impl<'a, K, V> Place<V> for EntryPlace<'a, K, V> {
     fn pointer(&mut self) -> *mut V {
         self.bucket.read_mut().1
     }
@@ -2145,33 +2184,64 @@ impl<'a, K, V> OccupiedEntry<'a, K, V> {
         self.key.take()
     }
 
-    /// Replaces the entry, returning the old key and value.
+    /// Replaces the entry, returning the old key and value. The new key in the hash map will be
+    /// the key used to create this entry.
     ///
     /// # Examples
     ///
     /// ```
     /// #![feature(map_entry_replace)]
-    /// use std::collections::HashMap;
-    /// use std::collections::hash_map::Entry;
+    /// use std::collections::hash_map::{Entry, HashMap};
+    /// use std::rc::Rc;
     ///
-    /// let mut map: HashMap<String, u32> = HashMap::new();
-    /// map.insert("poneyland".to_string(), 15);
+    /// let mut map: HashMap<Rc<String>, u32> = HashMap::new();
+    /// map.insert(Rc::new("Stringthing".to_string()), 15);
     ///
-    /// if let Entry::Occupied(entry) = map.entry("poneyland".to_string()) {
-    ///     let (old_key, old_value): (String, u32) = entry.replace(16);
-    ///     assert_eq!(old_key, "poneyland");
-    ///     assert_eq!(old_value, 15);
+    /// let my_key = Rc::new("Stringthing".to_string());
+    ///
+    /// if let Entry::Occupied(entry) = map.entry(my_key) {
+    ///     // Also replace the key with a handle to our other key.
+    ///     let (old_key, old_value): (Rc<String>, u32) = entry.replace_entry(16);
     /// }
     ///
-    /// assert_eq!(map.get("poneyland"), Some(&16));
     /// ```
-    pub fn replace(mut self, value: V) -> (K, V) {
+    pub fn replace_entry(mut self, value: V) -> (K, V) {
         let (old_key, old_value) = self.elem.read_mut();
 
         let old_key = mem::replace(old_key, self.key.unwrap());
         let old_value = mem::replace(old_value, value);
 
         (old_key, old_value)
+    }
+
+    /// Replaces the key in the hash map with the key used to create this entry.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(map_entry_replace)]
+    /// use std::collections::hash_map::{Entry, HashMap};
+    /// use std::rc::Rc;
+    ///
+    /// let mut map: HashMap<Rc<String>, u32> = HashMap::new();
+    /// let mut known_strings: Vec<Rc<String>> = Vec::new();
+    ///
+    /// // Initialise known strings, run program, etc.
+    ///
+    /// reclaim_memory(&mut map, &known_strings);
+    ///
+    /// fn reclaim_memory(map: &mut HashMap<Rc<String>, u32>, known_strings: &[Rc<String>] ) {
+    ///     for s in known_strings {
+    ///         if let Entry::Occupied(entry) = map.entry(s.clone()) {
+    ///             // Replaces the entry's key with our version of it in `known_strings`.
+    ///             entry.replace_key();
+    ///         }
+    ///     }
+    /// }
+    /// ```
+    pub fn replace_key(mut self) -> K {
+        let (old_key, _) = self.elem.read_mut();
+        mem::replace(old_key, self.key.unwrap())
     }
 }
 
