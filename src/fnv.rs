@@ -64,7 +64,6 @@
 //! [faq]: https://www.rust-lang.org/faq.html#why-are-rusts-hashmaps-slow
 //! [graphs]: http://cglab.ca/~abeinges/blah/hash-rs/
 
-
 use core::default::Default;
 use core::hash::{BuildHasherDefault, Hasher};
 use {HashMap, HashSet};
@@ -119,12 +118,11 @@ pub type FnvHashMap<K, V> = HashMap<K, V, FnvBuildHasher>;
 /// A `HashSet` using a default FNV hasher.
 pub type FnvHashSet<T> = HashSet<T, FnvBuildHasher>;
 
-
 #[cfg(test)]
 mod test {
     use super::*;
-    use core::hash::Hasher;
     use alloc::Vec;
+    use core::hash::Hasher;
 
     fn fnv1a(bytes: &[u8]) -> u64 {
         let mut hasher = FnvHasher::default();

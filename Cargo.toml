@@ -1,6 +1,6 @@
 [package]
 name = "hashmap_core"
-version = "0.1.2"
+version = "0.1.3"
 authors = ["Amanieu d'Antras <amanieu@gmail.com>"]
 description = "Implementation of HashMap and HashSet for no_std environments."
 documentation = "https://docs.rs/hashmap_core/"
