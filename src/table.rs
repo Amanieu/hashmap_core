@@ -8,11 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use alloc::allocator::CollectionAllocErr;
-use alloc::heap::{Alloc, Heap};
+use alloc::{Alloc, CollectionAllocErr, Global, Layout};
 use core::cmp;
 use core::hash::{BuildHasher, Hash, Hasher};
-use core::heap::Layout;
 use core::marker;
 use core::mem;
 use core::mem::{align_of, needs_drop, size_of};
@@ -765,14 +763,13 @@ impl<K, V> RawTable<K, V> {
             return Err(CollectionAllocErr::CapacityOverflow);
         }
 
-        let buffer = Heap.alloc(Layout::from_size_align(size, alignment).ok_or(CollectionAllocErr::CapacityOverflow)?)?;
-
-        let hashes = buffer as *mut HashUint;
+        let buffer = Global.alloc(Layout::from_size_align(size, alignment)
+            .map_err(|_| CollectionAllocErr::CapacityOverflow)?)?;
 
         Ok(RawTable {
             capacity_mask: capacity.wrapping_sub(1),
             size: 0,
-            hashes: TaggedHashUintPtr::new(hashes),
+            hashes: TaggedHashUintPtr::new(buffer.cast().as_ptr()),
             marker: marker::PhantomData,
         })
     }
@@ -782,7 +779,7 @@ impl<K, V> RawTable<K, V> {
     unsafe fn new_uninitialized(capacity: usize) -> RawTable<K, V> {
         match Self::try_new_uninitialized(capacity) {
             Err(CollectionAllocErr::CapacityOverflow) => panic!("capacity overflow"),
-            Err(CollectionAllocErr::AllocErr(e)) => Heap.oom(e),
+            Err(CollectionAllocErr::AllocErr) => Global.oom(),
             Ok(table) => table,
         }
     }
@@ -821,7 +818,7 @@ impl<K, V> RawTable<K, V> {
     pub fn new(capacity: usize) -> RawTable<K, V> {
         match Self::try_new(capacity) {
             Err(CollectionAllocErr::CapacityOverflow) => panic!("capacity overflow"),
-            Err(CollectionAllocErr::AllocErr(e)) => Heap.oom(e),
+            Err(CollectionAllocErr::AllocErr) => Global.oom(),
             Ok(table) => table,
         }
     }
@@ -1204,8 +1201,8 @@ unsafe impl<#[may_dangle] K, #[may_dangle] V> Drop for RawTable<K, V> {
         debug_assert!(!oflo, "should be impossible");
 
         unsafe {
-            Heap.dealloc(
-                self.hashes.ptr() as *mut u8,
+            Global.dealloc(
+                NonNull::new_unchecked(self.hashes.ptr()).as_opaque(),
                 Layout::from_size_align(size, align).unwrap(),
             );
             // Remember how everything was allocated out of one buffer

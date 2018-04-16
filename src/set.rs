@@ -14,8 +14,8 @@ use core::hash::{BuildHasher, Hash};
 use core::iter::{Chain, FromIterator, FusedIterator};
 use core::ops::{BitAnd, BitOr, BitXor, Sub};
 
-use super::Recover;
 use super::map::{self, HashMap, Keys, RandomState};
+use super::Recover;
 
 // Future Optimization (FIXME!)
 // =============================

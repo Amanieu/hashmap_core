@@ -11,13 +11,11 @@
 use self::Entry::*;
 use self::VacantEntryState::*;
 
-use alloc::allocator::CollectionAllocErr;
-use alloc::heap::Heap;
+use alloc::{Alloc, CollectionAllocErr, Global};
 use core::borrow::Borrow;
 use core::cmp::max;
 use core::fmt::{self, Debug};
 use core::hash::{BuildHasher, Hash};
-use core::heap::Alloc;
 use core::iter::{FromIterator, FusedIterator};
 use core::mem::{self, replace};
 use core::ops::{Deref, Index};
@@ -786,7 +784,7 @@ where
     pub fn reserve(&mut self, additional: usize) {
         match self.try_reserve(additional) {
             Err(CollectionAllocErr::CapacityOverflow) => panic!("capacity overflow"),
-            Err(CollectionAllocErr::AllocErr(e)) => Heap.oom(e),
+            Err(CollectionAllocErr::AllocErr) => Global.oom(),
             Ok(()) => { /* yay */ }
         }
     }

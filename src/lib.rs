@@ -11,11 +11,19 @@
 //! Unordered containers, implemented as hash-tables
 
 #![no_std]
-#![cfg_attr(not(feature = "disable"),
-            feature(alloc, dropck_eyepatch, allocator_api, fused, ptr_internals, try_reserve))]
+#![cfg_attr(
+    not(feature = "disable"),
+    feature(alloc, dropck_eyepatch, allocator_api, fused, ptr_internals, try_reserve, nonnull_cast)
+)]
 
 #[cfg(not(feature = "disable"))]
-extern crate alloc;
+extern crate alloc as alloc_crate;
+
+#[cfg(not(feature = "disable"))]
+mod alloc {
+    pub use alloc_crate::alloc::Global;
+    pub use core::alloc::*;
+}
 
 #[cfg(not(feature = "disable"))]
 pub mod fnv;
