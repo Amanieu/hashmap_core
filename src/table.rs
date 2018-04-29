@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use alloc::{Alloc, CollectionAllocErr, Global, Layout};
+use alloc::{oom, Alloc, CollectionAllocErr, Global, Layout};
 use core::cmp;
 use core::hash::{BuildHasher, Hash, Hasher};
 use core::marker;
@@ -779,7 +779,7 @@ impl<K, V> RawTable<K, V> {
     unsafe fn new_uninitialized(capacity: usize) -> RawTable<K, V> {
         match Self::try_new_uninitialized(capacity) {
             Err(CollectionAllocErr::CapacityOverflow) => panic!("capacity overflow"),
-            Err(CollectionAllocErr::AllocErr) => Global.oom(),
+            Err(CollectionAllocErr::AllocErr) => oom(),
             Ok(table) => table,
         }
     }
@@ -818,7 +818,7 @@ impl<K, V> RawTable<K, V> {
     pub fn new(capacity: usize) -> RawTable<K, V> {
         match Self::try_new(capacity) {
             Err(CollectionAllocErr::CapacityOverflow) => panic!("capacity overflow"),
-            Err(CollectionAllocErr::AllocErr) => Global.oom(),
+            Err(CollectionAllocErr::AllocErr) => oom(),
             Ok(table) => table,
         }
     }
@@ -1140,7 +1140,7 @@ impl<'a, K, V> ExactSizeIterator for Drain<'a, K, V> {
 
 impl<'a, K: 'a, V: 'a> Drop for Drain<'a, K, V> {
     fn drop(&mut self) {
-        for _ in self {}
+        self.for_each(drop);
     }
 }
 

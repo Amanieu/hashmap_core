@@ -21,7 +21,7 @@ extern crate alloc as alloc_crate;
 
 #[cfg(not(feature = "disable"))]
 mod alloc {
-    pub use alloc_crate::alloc::Global;
+    pub use alloc_crate::alloc::{oom, Global};
     pub use core::alloc::*;
 }
 

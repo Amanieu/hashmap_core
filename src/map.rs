@@ -11,7 +11,7 @@
 use self::Entry::*;
 use self::VacantEntryState::*;
 
-use alloc::{Alloc, CollectionAllocErr, Global};
+use alloc::{oom, CollectionAllocErr};
 use core::borrow::Borrow;
 use core::cmp::max;
 use core::fmt::{self, Debug};
@@ -33,6 +33,7 @@ const MIN_NONZERO_RAW_CAPACITY: usize = 32; // must be a power of two
 struct DefaultResizePolicy;
 
 impl DefaultResizePolicy {
+    #[inline]
     fn new() -> DefaultResizePolicy {
         DefaultResizePolicy
     }
@@ -784,7 +785,7 @@ where
     pub fn reserve(&mut self, additional: usize) {
         match self.try_reserve(additional) {
             Err(CollectionAllocErr::CapacityOverflow) => panic!("capacity overflow"),
-            Err(CollectionAllocErr::AllocErr) => Global.oom(),
+            Err(CollectionAllocErr::AllocErr) => oom(),
             Ok(()) => { /* yay */ }
         }
     }
@@ -1379,7 +1380,6 @@ where
     /// # Examples
     ///
     /// ```
-    /// #![feature(hash_map_remove_entry)]
     /// use std::collections::HashMap;
     ///
     /// # fn main() {
@@ -2054,9 +2054,9 @@ impl<'a, K, V> Entry<'a, K, V> {
     ///    .or_insert(42);
     /// assert_eq!(map["poneyland"], 43);
     /// ```
-    pub fn and_modify<F>(self, mut f: F) -> Self
+    pub fn and_modify<F>(self, f: F) -> Self
     where
-        F: FnMut(&mut V),
+        F: FnOnce(&mut V),
     {
         match self {
             Occupied(mut entry) => {
