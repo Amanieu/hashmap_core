@@ -9,8 +9,4 @@ repository = "https://github.com/Amanieu/hashmap_core"
 readme = "README.md"
 keywords = ["hashmap", "hashset", "no_std", "hash", "fnv"]
 
-[features]
-# workaround for some cargo deficiency
-disable = []
-
 [dependencies]
