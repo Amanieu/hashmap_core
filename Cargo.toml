@@ -1,11 +1,11 @@
 [package]
-name = "hashmap_core"
-version = "0.1.5"
-authors = ["Amanieu d'Antras <amanieu@gmail.com>"]
+name = "hashmap_core2"
+version = "0.0.1"
+authors = ["Amanieu d'Antras <amanieu@gmail.com>", "Lachlan Sneff <lachlan.sneff@gmail.com>"]
 description = "Implementation of HashMap and HashSet for no_std environments."
-documentation = "https://docs.rs/hashmap_core/"
+documentation = "https://docs.rs/hashmap_core2/"
 license = "Apache-2.0/MIT"
-repository = "https://github.com/Amanieu/hashmap_core"
+repository = "https://github.com/lachlansneff/hashmap_core"
 readme = "README.md"
 keywords = ["hashmap", "hashset", "no_std", "hash", "fnv"]
 
