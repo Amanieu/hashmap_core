@@ -11,7 +11,7 @@
 use self::Entry::*;
 use self::VacantEntryState::*;
 
-use alloc::{oom, CollectionAllocErr};
+use alloc::CollectionAllocErr;
 use core::borrow::Borrow;
 use core::cmp::max;
 use core::fmt::{self, Debug};
@@ -24,7 +24,10 @@ pub use fnv::FnvBuildHasher as RandomState;
 pub use fnv::FnvHasher as DefaultHasher;
 
 use super::table::BucketState::{Empty, Full};
-use super::table::{self, Bucket, EmptyBucket, FullBucket, FullBucketMut, RawTable, SafeHash};
+use super::table::Fallibility::{Fallible, Infallible};
+use super::table::{
+    self, Bucket, EmptyBucket, Fallibility, FullBucket, FullBucketMut, RawTable, SafeHash,
+};
 
 const MIN_NONZERO_RAW_CAPACITY: usize = 32; // must be a power of two
 
@@ -783,9 +786,9 @@ where
     /// map.reserve(10);
     /// ```
     pub fn reserve(&mut self, additional: usize) {
-        match self.try_reserve(additional) {
+        match self.reserve_internal(additional, Infallible) {
             Err(CollectionAllocErr::CapacityOverflow) => panic!("capacity overflow"),
-            Err(CollectionAllocErr::AllocErr) => oom(),
+            Err(CollectionAllocErr::AllocErr) => unreachable!(),
             Ok(()) => { /* yay */ }
         }
     }
@@ -808,18 +811,24 @@ where
     /// map.try_reserve(10).expect("why is the test harness OOMing on 10 bytes?");
     /// ```
     pub fn try_reserve(&mut self, additional: usize) -> Result<(), CollectionAllocErr> {
+        self.reserve_internal(additional, Fallible)
+    }
+
+    fn reserve_internal(&mut self, additional: usize, fallibility: Fallibility)
+        -> Result<(), CollectionAllocErr> {
+
         let remaining = self.capacity() - self.len(); // this can't overflow
         if remaining < additional {
             let min_cap = self.len()
                 .checked_add(additional)
                 .ok_or(CollectionAllocErr::CapacityOverflow)?;
             let raw_cap = self.resize_policy.try_raw_capacity(min_cap)?;
-            self.try_resize(raw_cap)?;
+            self.try_resize(raw_cap, fallibility)?;
         } else if self.table.tag() && remaining <= self.len() {
             // Probe sequence is too long and table is half full,
             // resize early to reduce probing length.
             let new_capacity = self.table.capacity() * 2;
-            self.try_resize(new_capacity)?;
+            self.try_resize(new_capacity, fallibility)?;
         }
         Ok(())
     }
@@ -831,11 +840,21 @@ where
     ///   2) Ensure `new_raw_cap` is a power of two or zero.
     #[inline(never)]
     #[cold]
-    fn try_resize(&mut self, new_raw_cap: usize) -> Result<(), CollectionAllocErr> {
+    fn try_resize(
+        &mut self,
+        new_raw_cap: usize,
+        fallibility: Fallibility,
+    ) -> Result<(), CollectionAllocErr> {
         assert!(self.table.size() <= new_raw_cap);
         assert!(new_raw_cap.is_power_of_two() || new_raw_cap == 0);
 
-        let mut old_table = replace(&mut self.table, RawTable::try_new(new_raw_cap)?);
+        let mut old_table = replace(
+            &mut self.table,
+            match fallibility {
+                Infallible => RawTable::new(new_raw_cap),
+                Fallible => RawTable::try_new(new_raw_cap)?,
+            },
+        );
         let old_size = old_table.size();
 
         if old_table.size() == 0 {
@@ -2153,6 +2172,11 @@ impl<'a, K, V> OccupiedEntry<'a, K, V> {
 
     /// Gets a mutable reference to the value in the entry.
     ///
+    /// If you need a reference to the `OccupiedEntry` which may outlive the
+    /// destruction of the `Entry` value, see [`into_mut`].
+    ///
+    /// [`into_mut`]: #method.into_mut
+    ///
     /// # Examples
     ///
     /// ```
@@ -2164,10 +2188,14 @@ impl<'a, K, V> OccupiedEntry<'a, K, V> {
     ///
     /// assert_eq!(map["poneyland"], 12);
     /// if let Entry::Occupied(mut o) = map.entry("poneyland") {
-    ///      *o.get_mut() += 10;
+    ///     *o.get_mut() += 10;
+    ///     assert_eq!(*o.get(), 22);
+    ///
+    ///     // We can use the same Entry multiple times.
+    ///     *o.get_mut() += 2;
     /// }
     ///
-    /// assert_eq!(map["poneyland"], 22);
+    /// assert_eq!(map["poneyland"], 24);
     /// ```
     pub fn get_mut(&mut self) -> &mut V {
         self.elem.read_mut().1
@@ -2175,6 +2203,10 @@ impl<'a, K, V> OccupiedEntry<'a, K, V> {
 
     /// Converts the OccupiedEntry into a mutable reference to the value in the entry
     /// with a lifetime bound to the map itself.
+    ///
+    /// If you need multiple references to the `OccupiedEntry`, see [`get_mut`].
+    ///
+    /// [`get_mut`]: #method.get_mut
     ///
     /// # Examples
     ///
