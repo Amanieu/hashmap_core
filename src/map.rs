@@ -2094,7 +2094,6 @@ impl<'a, K, V: Default> Entry<'a, K, V> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(entry_or_default)]
     /// # fn main() {
     /// use std::collections::HashMap;
     ///
