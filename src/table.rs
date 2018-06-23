@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use alloc::{oom, Alloc, CollectionAllocErr, Global, Layout, LayoutErr};
+use alloc::{handle_alloc_error, Alloc, CollectionAllocErr, Global, Layout, LayoutErr};
 use core::hash::{BuildHasher, Hash, Hasher};
 use core::hint;
 use core::marker;
@@ -704,7 +704,7 @@ impl<K, V> RawTable<K, V> {
         // point into it.
         let (layout, _) = calculate_layout::<K, V>(capacity)?;
         let buffer = Global.alloc(layout).map_err(|e| match fallibility {
-            Infallible => oom(layout),
+            Infallible => handle_alloc_error(layout),
             Fallible => e,
         })?;
 
@@ -1136,10 +1136,7 @@ unsafe impl<#[may_dangle] K, #[may_dangle] V> Drop for RawTable<K, V> {
         let (layout, _) = calculate_layout::<K, V>(self.capacity())
             .unwrap_or_else(|_| unsafe { hint::unreachable_unchecked() });
         unsafe {
-            Global.dealloc(
-                NonNull::new_unchecked(self.hashes.ptr()).cast(),
-                layout,
-            );
+            Global.dealloc(NonNull::new_unchecked(self.hashes.ptr()).cast(), layout);
             // Remember how everything was allocated out of one buffer
             // during initialization? We only need one call to free here.
         }
