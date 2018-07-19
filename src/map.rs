@@ -11,7 +11,7 @@
 use self::Entry::*;
 use self::VacantEntryState::*;
 
-use alloc::CollectionAllocErr;
+use collections::CollectionAllocErr;
 use core::borrow::Borrow;
 use core::cmp::max;
 use core::fmt::{self, Debug};

@@ -23,8 +23,13 @@ extern crate alloc as alloc_crate;
 mod alloc {
     pub use alloc_crate::alloc::{handle_alloc_error, Global};
     #[cfg(test)]
-    pub use alloc_crate::Vec;
+    pub use alloc_crate::vec::Vec;
     pub use core::alloc::*;
+}
+
+#[cfg(not(feature = "disable"))]
+mod collections {
+    pub use alloc_crate::collections::CollectionAllocErr;
 }
 
 #[cfg(not(feature = "disable"))]
