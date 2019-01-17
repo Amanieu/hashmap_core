@@ -28,7 +28,7 @@
 //! `HashMap` with FNV.
 //!
 //! ```rust
-//! use fnv::FnvHashMap;
+//! use hashmap_core::fnv::FnvHashMap;
 //!
 //! let mut map = FnvHashMap::default();
 //! map.insert(1, "one");
@@ -49,7 +49,7 @@
 //! with FNV.
 //!
 //! ```rust
-//! use fnv::FnvHashSet;
+//! use hashmap_core::fnv::FnvHashSet;
 //!
 //! let mut set = FnvHashSet::default();
 //! set.insert(1);
