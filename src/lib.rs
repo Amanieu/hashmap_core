@@ -13,7 +13,7 @@
 #![no_std]
 #![cfg_attr(
     not(feature = "disable"),
-    feature(alloc, dropck_eyepatch, allocator_api, fused, ptr_internals, try_reserve, nonnull_cast)
+    feature(alloc, dropck_eyepatch, allocator_api, ptr_internals, try_reserve, alloc_layout_extra)
 )]
 
 #[cfg(not(feature = "disable"))]
