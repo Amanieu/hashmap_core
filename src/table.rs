@@ -704,9 +704,12 @@ impl<K, V> RawTable<K, V> {
         // we just allocate a single array, and then have the subarrays
         // point into it.
         let (layout, _) = calculate_layout::<K, V>(capacity)?;
-        let buffer = Global.alloc(layout).map_err(|e| match fallibility {
+        let buffer = Global.alloc(layout).map_err(|_| match fallibility {
             Infallible => handle_alloc_error(layout),
-            Fallible => TryReserveError::CapacityOverflow,
+            Fallible => TryReserveError::AllocError {
+                layout,
+                non_exhaustive: ()
+            },
         })?;
 
         Ok(RawTable {
@@ -723,7 +726,7 @@ impl<K, V> RawTable<K, V> {
         let layout = Layout::from_size_align(capacity, 4).unwrap();
         match Self::new_uninitialized_internal(capacity, Infallible) {
             Err(TryReserveError::CapacityOverflow) => panic!("capacity overflow"),
-            Err(TryReserveError::AllocError { layout, non_exhaustive: () }) => unreachable!(),
+            Err(TryReserveError::AllocError { .. }) => unreachable!(),
             Ok(table) => table,
         }
     }
@@ -765,7 +768,7 @@ impl<K, V> RawTable<K, V> {
         let layout = Layout::from_size_align(capacity, 4).unwrap();
         match Self::new_internal(capacity, Infallible) {
             Err(TryReserveError::CapacityOverflow) => panic!("capacity overflow"),
-            Err(TryReserveError::AllocError { layout, non_exhaustive: () }) => unreachable!(),
+            Err(TryReserveError::AllocError { .. }) => unreachable!(),
             Ok(table) => table,
         }
     }

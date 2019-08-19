@@ -790,7 +790,7 @@ where
         let layout = Layout::from_size_align(additional, 4).unwrap();
         match self.reserve_internal(additional, Infallible) {
             Err(TryReserveError::CapacityOverflow) => panic!("capacity overflow"),
-            Err(TryReserveError::AllocError { layout, non_exhaustive: () }) => unreachable!(),
+            Err(TryReserveError::AllocError { .. }) => unreachable!(),
             Ok(()) => { /* yay */ }
         }
     }
