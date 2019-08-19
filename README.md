@@ -1,3 +1,5 @@
+## This crate is deprecated, use [hashbrown](https://github.com/rust-lang/hashbrown) instead.
+
 hashmap_core
 =========
 

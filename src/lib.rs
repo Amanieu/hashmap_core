@@ -33,10 +33,13 @@ mod collections {
 }
 
 #[cfg(not(feature = "disable"))]
+#[deprecated = "use hashbrown instead"]
 pub mod fnv;
 #[cfg(not(feature = "disable"))]
+#[deprecated = "use hashbrown instead"]
 pub mod map;
 #[cfg(not(feature = "disable"))]
+#[deprecated = "use hashbrown instead"]
 pub mod set;
 #[cfg(not(feature = "disable"))]
 mod table;
@@ -51,10 +54,14 @@ trait Recover<Q: ?Sized> {
 }
 
 #[cfg(not(feature = "disable"))]
+#[deprecated = "use hashbrown instead"]
 pub use fnv::FnvHashMap;
 #[cfg(not(feature = "disable"))]
+#[deprecated = "use hashbrown instead"]
 pub use fnv::FnvHashSet;
 #[cfg(not(feature = "disable"))]
+#[deprecated = "use hashbrown instead"]
 pub use map::HashMap;
 #[cfg(not(feature = "disable"))]
+#[deprecated = "use hashbrown instead"]
 pub use set::HashSet;
