@@ -11,7 +11,7 @@
 use self::Entry::*;
 use self::VacantEntryState::*;
 
-use collections::CollectionAllocErr;
+use collections::TryReserveError;
 use core::borrow::Borrow;
 use core::cmp::max;
 use core::fmt::{self, Debug};
@@ -28,6 +28,7 @@ use super::table::Fallibility::{Fallible, Infallible};
 use super::table::{
     self, Bucket, EmptyBucket, Fallibility, FullBucket, FullBucketMut, RawTable, SafeHash,
 };
+use alloc::Layout;
 
 const MIN_NONZERO_RAW_CAPACITY: usize = 32; // must be a power of two
 
@@ -46,7 +47,7 @@ impl DefaultResizePolicy {
     /// provide that capacity, accounting for maximum loading. The raw capacity
     /// is always zero or a power of two.
     #[inline]
-    fn try_raw_capacity(&self, len: usize) -> Result<usize, CollectionAllocErr> {
+    fn try_raw_capacity(&self, len: usize) -> Result<usize, TryReserveError> {
         if len == 0 {
             Ok(0)
         } else {
@@ -56,7 +57,7 @@ impl DefaultResizePolicy {
             let mut raw_cap = len.checked_mul(11)
                 .map(|l| l / 10)
                 .and_then(|l| l.checked_next_power_of_two())
-                .ok_or(CollectionAllocErr::CapacityOverflow)?;
+                .ok_or(TryReserveError::CapacityOverflow)?;
 
             raw_cap = max(MIN_NONZERO_RAW_CAPACITY, raw_cap);
             Ok(raw_cap)
@@ -786,9 +787,10 @@ where
     /// map.reserve(10);
     /// ```
     pub fn reserve(&mut self, additional: usize) {
+        let layout = Layout::from_size_align(additional, 4).unwrap();
         match self.reserve_internal(additional, Infallible) {
-            Err(CollectionAllocErr::CapacityOverflow) => panic!("capacity overflow"),
-            Err(CollectionAllocErr::AllocErr) => unreachable!(),
+            Err(TryReserveError::CapacityOverflow) => panic!("capacity overflow"),
+            Err(TryReserveError::AllocError { layout, non_exhaustive: () }) => unreachable!(),
             Ok(()) => { /* yay */ }
         }
     }
@@ -810,18 +812,18 @@ where
     /// let mut map: HashMap<&str, isize> = HashMap::new();
     /// map.try_reserve(10).expect("why is the test harness OOMing on 10 bytes?");
     /// ```
-    pub fn try_reserve(&mut self, additional: usize) -> Result<(), CollectionAllocErr> {
+    pub fn try_reserve(&mut self, additional: usize) -> Result<(), TryReserveError> {
         self.reserve_internal(additional, Fallible)
     }
 
     fn reserve_internal(&mut self, additional: usize, fallibility: Fallibility)
-        -> Result<(), CollectionAllocErr> {
+        -> Result<(), TryReserveError> {
 
         let remaining = self.capacity() - self.len(); // this can't overflow
         if remaining < additional {
             let min_cap = self.len()
                 .checked_add(additional)
-                .ok_or(CollectionAllocErr::CapacityOverflow)?;
+                .ok_or(TryReserveError::CapacityOverflow)?;
             let raw_cap = self.resize_policy.try_raw_capacity(min_cap)?;
             self.try_resize(raw_cap, fallibility)?;
         } else if self.table.tag() && remaining <= self.len() {
@@ -844,7 +846,7 @@ where
         &mut self,
         new_raw_cap: usize,
         fallibility: Fallibility,
-    ) -> Result<(), CollectionAllocErr> {
+    ) -> Result<(), TryReserveError> {
         assert!(self.table.size() <= new_raw_cap);
         assert!(new_raw_cap.is_power_of_two() || new_raw_cap == 0);
 

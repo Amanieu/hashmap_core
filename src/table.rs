@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use alloc::{handle_alloc_error, Alloc, Global, Layout, LayoutErr};
-use collections::CollectionAllocErr;
+use collections::TryReserveError;
 use core::hash::{BuildHasher, Hash, Hasher};
 use core::hint;
 use core::marker;
@@ -689,7 +689,7 @@ impl<K, V> RawTable<K, V> {
     unsafe fn new_uninitialized_internal(
         capacity: usize,
         fallibility: Fallibility,
-    ) -> Result<RawTable<K, V>, CollectionAllocErr> {
+    ) -> Result<RawTable<K, V>, TryReserveError> {
         if capacity == 0 {
             return Ok(RawTable {
                 size: 0,
@@ -706,7 +706,7 @@ impl<K, V> RawTable<K, V> {
         let (layout, _) = calculate_layout::<K, V>(capacity)?;
         let buffer = Global.alloc(layout).map_err(|e| match fallibility {
             Infallible => handle_alloc_error(layout),
-            Fallible => e,
+            Fallible => TryReserveError::CapacityOverflow,
         })?;
 
         Ok(RawTable {
@@ -720,9 +720,10 @@ impl<K, V> RawTable<K, V> {
     /// Does not initialize the buckets. The caller should ensure they,
     /// at the very least, set every hash to EMPTY_BUCKET.
     unsafe fn new_uninitialized(capacity: usize) -> RawTable<K, V> {
+        let layout = Layout::from_size_align(capacity, 4).unwrap();
         match Self::new_uninitialized_internal(capacity, Infallible) {
-            Err(CollectionAllocErr::CapacityOverflow) => panic!("capacity overflow"),
-            Err(CollectionAllocErr::AllocErr) => unreachable!(),
+            Err(TryReserveError::CapacityOverflow) => panic!("capacity overflow"),
+            Err(TryReserveError::AllocError { layout, non_exhaustive: () }) => unreachable!(),
             Ok(table) => table,
         }
     }
@@ -744,7 +745,7 @@ impl<K, V> RawTable<K, V> {
     fn new_internal(
         capacity: usize,
         fallibility: Fallibility,
-    ) -> Result<RawTable<K, V>, CollectionAllocErr> {
+    ) -> Result<RawTable<K, V>, TryReserveError> {
         unsafe {
             let ret = RawTable::new_uninitialized_internal(capacity, fallibility)?;
             ptr::write_bytes(ret.hashes.ptr(), 0, capacity);
@@ -754,16 +755,17 @@ impl<K, V> RawTable<K, V> {
 
     /// Tries to create a new raw table from a given capacity. If it cannot allocate,
     /// it returns with AllocErr.
-    pub fn try_new(capacity: usize) -> Result<RawTable<K, V>, CollectionAllocErr> {
+    pub fn try_new(capacity: usize) -> Result<RawTable<K, V>, TryReserveError> {
         Self::new_internal(capacity, Fallible)
     }
 
     /// Creates a new raw table from a given capacity. All buckets are
     /// initially empty.
     pub fn new(capacity: usize) -> RawTable<K, V> {
+        let layout = Layout::from_size_align(capacity, 4).unwrap();
         match Self::new_internal(capacity, Infallible) {
-            Err(CollectionAllocErr::CapacityOverflow) => panic!("capacity overflow"),
-            Err(CollectionAllocErr::AllocErr) => unreachable!(),
+            Err(TryReserveError::CapacityOverflow) => panic!("capacity overflow"),
+            Err(TryReserveError::AllocError { layout, non_exhaustive: () }) => unreachable!(),
             Ok(table) => table,
         }
     }

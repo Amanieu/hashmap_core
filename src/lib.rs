@@ -29,7 +29,7 @@ mod alloc {
 
 #[cfg(not(feature = "disable"))]
 mod collections {
-    pub use alloc_crate::collections::CollectionAllocErr;
+    pub use alloc_crate::collections::TryReserveError;
 }
 
 #[cfg(not(feature = "disable"))]
